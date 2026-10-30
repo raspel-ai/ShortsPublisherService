@@ -5,7 +5,7 @@ using OpenQA.Selenium.Appium.Android;
 namespace ShortsPublisher;
 
 /// <summary>
-/// Incremental Facebook UI automation. Only opens Facebook and its Profile tab.
+/// Incremental Facebook UI automation. Opens Facebook, navigates to Profile, and taps Add to story.
 /// No media upload or publication is performed.
 /// </summary>
 public sealed class FacebookPublisher(PublisherOptions options) : IDisposable
@@ -46,6 +46,7 @@ public sealed class FacebookPublisher(PublisherOptions options) : IDisposable
         Console.Error.WriteLine("[facebook] profile.open: tapped Profile tab");
 
         var verifyDeadline = DateTime.UtcNow.AddSeconds(15);
+        var profileVerified = false;
         while (DateTime.UtcNow < verifyDeadline)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -54,15 +55,39 @@ public sealed class FacebookPublisher(PublisherOptions options) : IDisposable
             if (selected.Count > 0)
             {
                 Console.Error.WriteLine("[facebook] profile.verify: Profile tab selected");
-                return Task.FromResult(new FacebookPreparationResult(
-                    "facebook_profile_opened",
-                    "Facebook Profile tab opened. No video was published."));
+                profileVerified = true;
+                break;
             }
             Thread.Sleep(500);
         }
 
-        throw new InvalidOperationException(
-            "Facebook Profile tab selection could not be confirmed. No publication attempted.");
+        // The profile page can replace the bottom tab hierarchy.
+        if (!profileVerified)
+            Console.Error.WriteLine("[facebook] profile.verify: checking profile action");
+
+        Console.Error.WriteLine("[facebook] story.open: locating Add to story");
+        var storyDeadline = DateTime.UtcNow.AddSeconds(20);
+        IWebElement? addToStory = null;
+        while (DateTime.UtcNow < storyDeadline)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            addToStory = _driver.FindElements(By.XPath(
+                "//*[@class='android.widget.Button' and @content-desc='Add to story' and @clickable='true']"))
+                .FirstOrDefault(element => element.Displayed && element.Enabled);
+            if (addToStory is not null) break;
+            Thread.Sleep(500);
+        }
+
+        if (addToStory is null)
+            throw new InvalidOperationException(
+                "Facebook Profile Add to story button was not found. No publication attempted.");
+
+        Console.Error.WriteLine("[facebook] profile.verify: profile action found");
+        addToStory.Click();
+        Console.Error.WriteLine("[facebook] story.open: tapped Add to story");
+        return Task.FromResult(new FacebookPreparationResult(
+            "facebook_story_opened",
+            "Tapped Add to story on Facebook Profile. No video was published."));
     }
 
     private void Connect()
