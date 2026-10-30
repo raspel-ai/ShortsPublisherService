@@ -155,11 +155,11 @@ try
     if (publishVideoFacebook)
     {
         Console.Error.WriteLine("[facebook] publication.prepare: starting Facebook publishing scaffold");
-        var facebook = new FacebookPublisher(options);
+        using var facebook = new FacebookPublisher(options);
         var preparation = await facebook.PreparePublicationAsync(filePath, caption, CancellationToken.None);
-        return await EmitAsync(new JobResult(taskId, preparation.Status, false, false,
+        return await EmitAsync(new JobResult(taskId, preparation.Status, true, false,
             filePath, preparation.Message, null, startedAt, DateTimeOffset.UtcNow),
-            resultFile, ExitFailure);
+            resultFile, ExitSuccess);
     }
 
     if (publishVideoTikTok)
@@ -491,7 +491,7 @@ static void PrintUsage()
       --task-id ID         Optional task identifier.
       --result-file PATH   Optional JSON result path.
       --publish-video-youtube  Backwards-compatible switch.
-      --publish-video-facebook  Facebook publishing scaffold; does not publish yet.
+      --publish-video-facebook  Open Facebook Profile tab; does not publish yet.
       --tiktok-gallery    Tap TikTok bottom-left Upload/gallery button (Create screen).
       --tiktok-create     Tap TikTok bottom-center Create (+) button (app already open).
       --open-tiktok       Open TikTok without publishing.
